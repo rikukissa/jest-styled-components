@@ -1,7 +1,7 @@
 const { ServerStyleSheet } = require('styled-components')
 const styleSheet = require('styled-components/lib/models/StyleSheet')
 
-const STYLE_TAGS_REGEXP = /<style[^>]*>([\s\S]*)<\/style>/
+const STYLE_TAGS_REGEXP = /<style[^>]*>([^<]*)</g
 
 // styled-components >=2.0.0
 function isOverV2() {
@@ -16,14 +16,25 @@ function isServer() {
 
 module.exports.isServer = isServer
 
+function parseCSSfromHTML(html) {
+  let css = ''
+  let matches
+  while ((matches = STYLE_TAGS_REGEXP.exec(html)) !== null) {
+    css += matches[1].trim()
+  }
+  return css
+}
+
+module.exports.parseCSSfromHTML = parseCSSfromHTML
+
 function getCSS() {
   const overV2 = isOverV2()
   if (overV2 && isServer()) {
-    return new ServerStyleSheet().getStyleTags().match(STYLE_TAGS_REGEXP)[1]
+    return parseCSSfromHTML(new ServerStyleSheet().getStyleTags())
+  } else if (overV2) {
+    return parseCSSfromHTML(styleSheet.default.instance.toHTML())
   }
-  if (overV2) {
-    return styleSheet.default.instance.toHTML().match(STYLE_TAGS_REGEXP)[1]
-  }
+
   return styleSheet.rules().map(rule => rule.cssText).join('\n')
 }
 
